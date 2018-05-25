@@ -1,5 +1,310 @@
-\documentclass{article}
+\documentclass[a4paper,10pt,twoside]{report}
 \usepackage[utf8]{inputenc}
+\usepackage{amsmath}                    % For equation environment
+\usepackage{a4wide}                     % Tell latex to use the room there is on the page
+\usepackage{amsmath}                    % For equation environment
+\usepackage[greek, british]{babel}      % Use british hyphenation stuff and the Greek Euro symbol
+\usepackage{eurosym}
+
+\makeatletter
+\title{VRP model}\let\Title\@title
+\author{Jord ten Bulte}          \let\Author\@author
+\date{May 25, 2018}           \let\Date\@date
+\makeatother
+
+\usepackage{datetime}
+\newdate{date}{25}{05}{2018} %datum van laatste update
+\newcommand{\printDate}{Printed: \today}
+\newcommand{\updatedDate}{\date{date}}
+\newcommand{\version}{Version 1.5, last updated: \Date}
+
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE,RO]{\printDate}
+\fancyhead[RE,LO]{\version}
+\fancyfoot[LE,RO]{\thepage}
+\setlength{\headheight}{13pt} 
+
 \begin{document}
-(Type your content here.)
+
+\paragraph*{Objective function}
+\begin{equation}
+min\ TC + SC
+\end{equation}
+$TC$ is transportation costs, is a cost PostNL pays drivers per minute. It contains costs due to travel time and stop time. $SC$ is the intangible service cost for violating (soft) time windows.
+
+\begin{equation}
+TC = \displaystyle\sum_{v \in V}\displaystyle\sum_{i \in N}\displaystyle\sum_{j \in N} c_{ij} x_{ijv} + \displaystyle\sum_{i \in N} c_i \displaystyle\sum_{j \in N} \displaystyle\sum_{v \in V} x_{ijv}
+\end{equation}
+Remark that, with a given set of nodes, the stop time costs are fixed $(= \sum_{i \in N} c_i)$ and can be discarded in the optimization.
+
+\begin{equation}
+SC = \displaystyle\sum_{v \in V}\displaystyle\sum_{i \in N} \displaystyle\sum_{j \in N} \left(\int_{-\infty}^{e_{0i}} f(a_{iv} = x)*E_{iv}(x)\,\mathrm{d}x + \int_{l_{0i}}^{\infty} f(a_{iv} = x)*L_{iv}(x)\,\mathrm{d}x\right)*x_{ijv}
+\end{equation}
+$f(a_{iv} = x)$ is the probability that the arrival time at node $i$ by vehicle $v$ is at time $x$. \\
+$E_{iv}(x)$ is a penalty function for the early time window for node $i$ which is visited by vehicle $v$\\
+$L_{iv}(x)$ is a penalty function for the late time window for node $i$ which is visited by vehicle $v$\\
+
+
+\paragraph*{Subject to}
+\begin{equation}
+\displaystyle\sum_{i \in N} x_{ikv} - \displaystyle\sum_{j \in N} x_{kjv} = 0 \forall k \in N\backslash\{0\}, v \in V
+\end{equation}
+Conservation of flow for each vehicle at each node (customer)
+
+\begin{equation}
+\displaystyle\sum_{v \in V} \displaystyle\sum_{j \in N} x_{ijv} = 1 \forall i \in N\backslash\{0\}
+\end{equation}
+Each customer is served exactly once
+
+\begin{equation}
+\displaystyle\sum_{j \in N} x_{0jv} = 1 \forall v \in V
+\end{equation}
+Each vehicle starts the route at the depot
+
+
+\begin{equation}
+\displaystyle\sum_{j \in N} x_{i0v} = 1 \forall v \in V
+\end{equation}
+Each vehicle ends the route at the depot
+
+\begin{equation}
+\displaystyle\sum_{i \in N\backslash\{0\}} q_i \displaystyle\sum_{j \in N} x_{ijv} \leq Q_v \forall v \in V
+\end{equation}
+
+\begin{equation}
+\displaystyle\sum_{i \in N\backslash\{0\}} m_i \displaystyle\sum_{j \in N} x_{ijv} \leq M_v \forall v \in V
+\end{equation}
+
+Capacity constraints for all vehicles ($q$ for volume and $m$ for mass capacity)
+
+\begin{equation}
+\displaystyle\sum_{i \in s} \displaystyle\sum_{j \in s} x_{ijv} \leq |s| - 1 \forall s \in S, v \in V
+\end{equation}
+Subtour elimination (no tours can exist without the depot)
+
+\begin{equation}
+Pr(a_{iv} \geq e_{1i}) \geq \alpha \forall i \in N, v \in V, \alpha = [0,0.5]
+\end{equation}
+
+%\begin{equation}
+%E[a_{iv}] \geq e_{1i} \forall i \in N, v \in V 
+%\end{equation}
+Hard time window for earliness: chance of arriving after $e_{1i}$ at node $i$ should be at least $\alpha$.
+
+\begin{equation}
+Pr(a_{iv} \leq l_{1i}) \leq 1 - \alpha \forall i \in N, v \in V, \alpha = [0,0.5]
+\end{equation}
+
+%\begin{equation}
+%E[a_{iv}] \leq l_{1i} \forall i \in N, v \in V
+%\end{equation}
+Hard time window for lateness: chance of arriving before $l_{1i}$ at node $i$ should be a maximum of $1 - \alpha$.
+
+\paragraph*{Notation}
+\begin{itemize}
+\item $G = (N,A)$: a connected digraph to represent the considered network
+\item $N$: set of Nodes (customers and depot)
+\item $S = 2^{N\backslash\{0\}}$: Power set of $N\backslash\{0\}$
+\item $A$: set of Arcs (roads)
+\item $V$: set of vehicles
+\item $N = \{0\}$: Depot
+\item $A = \{(i,j) : i,j \in N, i \neq j$\}: all possible routes from node $i$ to node $j$ with $i \neq j$ 
+\item $N = \{0,1,\dots,n\}$: All nodes including depot
+\item $V = \{0,1,\dots,v\}$: All vehicles
+\item $c_{ij}$: cost of going from node $i$ to node $j$
+\item $T_{ij}$:  time of going from node $i$ to node $j$
+\item $q_{i}$: volume demand at node $i$
+\item $m_{i}$: mass demand at node $i$
+\item $Q_v$: volume capacity of vehicle $v$
+\item $M_v$: mass capacity of vehicle $v$
+\item $s_{i}$: expected service time at node $i$
+\item $a_{iv}$: expected arrival time at node $i$ by vehicle $v$
+\item $l_{wi}$: latest service time at node $i$ for time window type $w$
+\item $e_{wi}$: earliest service time at node $i$ for time window type $w$
+\end{itemize}
+
+\paragraph{Assumptions}
+\begin{itemize}
+\item every vehicle $v$ is equal, homogeneous fleet, demand at customer does not exceed capacity of single vehicle
+\begin{itemize}
+\item[] $q_i \leq Q_v \forall i \in N, v \in V$
+\item[] $m_i \leq M_v \forall i \in N, v \in V$
+\end{itemize}
+\item total demand does not exceed fleet capacity
+\begin{itemize}
+\item[] $\displaystyle\sum_{i \in N} q_i \leq \displaystyle\sum_{v \in V} Q_v $ 
+\item[] $\displaystyle\sum_{i \in N} m_i \leq \displaystyle\sum_{v \in V} M_v $ 
+\end{itemize}
+\end{itemize}
+
+\paragraph{Route representation}
+\begin{itemize}
+\item $Z$: A solution, set of routes
+\item $Z = \{R_1,\dots,R_{|Z|}\}$
+\item $R_r$: Route in a solution
+  \item $R_r, r\in \{1,\dots,|Z|\}$ is a vector of the route $(0, i, j,\dots, 0)$ with all components elements of $N$ to specify which customer is visited by the vehicle and in which order. 
+\item $|Z|\leq|V|$: A solution has no more routes than available vehicles
+\end{itemize}
+
+$i \in R_r$ if $i \in N$ is part of route $R_r \in Z$ and $(i,j) \in R_r$ if $i$ and $j$ are two consecutive vertices in $R_r$, implying:
+
+\begin{equation*}
+i
+\begin{cases}
+\in R_r, & \text{if}\  \sum_{i \in N} x_{ijv} = 1 \forall v \in V, j \in N \\
+\notin R_r, & \text{otherwise} \\
+\end{cases}\\
+\end{equation*}
+
+\begin{equation*}
+(i,j)
+\begin{cases}
+\in R_r, & \text{if}\  \sum_{i \in N} \sum_{j \in N} x_{ijv} = 1 \forall v \in V \\
+\notin R_r, & \text{otherwise} \\
+\end{cases}\\
+\end{equation*}
+
+\paragraph{Parameters}
+\begin{itemize}
+\item $C$: Cost per minute for driver in \euro
+\item $\alpha$: Confidence of arriving too early at first stop or too late at last stop
+\end{itemize}
+
+\paragraph*{Decision variables}
+\begin{equation*}
+x_{ijv}=
+\begin{cases}
+1, & \text{if arc (\textit{i,j}) is used by vehicle }v\\
+0, & \text{otherwise}
+\end{cases}
+\end{equation*}
+\paragraph*{Linearisation constraints and variables}
+\begin{equation*}
+w=
+\begin{cases}
+1, & \text{if time window is hard}\\
+0, & \text{otherwise (time window is soft)}
+\end{cases}
+\end{equation*}
+
+
+
+\paragraph*{Time window values}
+\begin{equation*}
+e_{1i}=
+\begin{cases}
+17.30h, & \text{for } i=0\\
+18.00h, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+\begin{equation*}
+l_{1i}=
+\begin{cases}
+23.59h, & \text{for } i=0\\
+22.00h, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+\begin{equation*}
+e_{0i}=
+\begin{cases}
+17.30h, & \text{for } i=0\\
+min\{18.00h, E[a_{iv}]-30\ \text{minutes}\}, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+\begin{equation*}
+l_{0i}=
+\begin{cases}
+23.59h, & \text{for } i=0\\
+max\{22.00h, E[a_{iv}]+30\ \text{minutes}\}, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+\paragraph*{Penalty functions}
+\begin{equation*}
+E_{iv}(x)=
+\begin{cases}
+0, & \text{if } x \geq e_{0i} \\
+\geq 0, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+\begin{equation*}
+L_{iv}(x)=
+\begin{cases}
+0, & \text{if } x \leq l_{0i} \\
+\geq 0, & \text{otherwise}
+\end{cases}
+\end{equation*}
+
+The actual penalty function has not been decided, but is probably some quadratic function, to penalize larger delays/earliness more then slight delays/earliness.
+
+\paragraph*{Arrival time}
+Suppose we have stochastic travel and delivery times, with known probability distributions. Then the arrival time of a vehicle $v$ at node $i$ can be formulated. Consider $T_{ij}$ as the required time for traveling from node $i$ to $j$ and $D_i$ the delivery time at node $i$. for now, disregards hard time windows. Define the arrival time by vehicle $v$ at node $j$ \textit{}as $a_{jv}$, then:
+
+\begin{equation} \label{eq:arrivalTimeNoTW}
+a_{jv} = \displaystyle\sum_{(l,k) \in A_{jv}} T_{lk} + \displaystyle\sum_{l \in N_{jv}} D_l
+\end{equation}
+Here, $A_{iv}$ represents the set of arcs which are covered by vehicle $v$ up till node $j$ and $N_{jv}$ represents the set of nodes that are serviced up till node $j$. Recall: $D_0 = 0$. If $j$ not in tour of $v$, then $a_{jv} = 0$ for all $t$.
+
+\paragraph{Introducing hard time windows} By introduction of hard time windows, in fact the earliest and latest arrival time, (\ref{eq:arrivalTimeNoTW}) is no longer valid, because the arrival time of the first node is no longer linear. Therefore, all arrival times are no longer linear. For the first node, the arrival time is represented by $a_{pv} = max\{e_{1i}, e_{10}+T_{0p}\}$ where $i \neq 0$ and $p$ is the first customer to be served by vehicle $v$. Now the arrival time including a hard start time window is given by:
+\begin{equation*} 
+a_{jv} = a_{pv} + \displaystyle\sum_{(l,k) \in A_{jv}\backslash\{0k\}} T_{lk} + \displaystyle\sum_{l \in N_{jv}} D_l
+\end{equation*}
+
+\begin{equation} \label{eq:arrivalTimeWithTW}
+a_{jv} = max\{e_{1i}, e_{10}+T_{0p}\} + \displaystyle\sum_{(l,k) \in A_{jv}\backslash\{0p\}} T_{lk} + \displaystyle\sum_{l \in N_{jv}} D_l
+\end{equation}
+
+\paragraph{Travel time}
+The travel time is a random variable depending on (A) distance between nodes $i$ and $j$, (B) the time of departure, and (C) traversed route of arc $(i,j)$. (A) and (C) are not time dependent and can be aggregated in 1 parameter. 
+
+\paragraph{Travel costs}
+$c_{ij} = T_{ij}*C\ \forall i,j \in A$
+with $C$ being some parameter cost per hour (or minute)
+
+\paragraph{Delivery time}
+The delivery time is a random variable depending on several factors that are listed here: 
+\begin{itemize}
+\item Delivery preparation
+\begin{itemize}
+\item Park on a one way traffic road 
+\begin{itemize}
+\item higher chance on less parking availability, more parking time required
+\end{itemize}
+\item Retrieve parcel from van
+\item Walk to address
+\end{itemize}
+\item Parcel drop
+\begin{itemize}
+\item Not at home
+\begin{itemize}
+\item Neighbour drop
+\item Take back to depot
+\end{itemize}
+\item Special delivery
+\begin{itemize}
+\item Rembours
+\item ID required
+\item Signature required
+\end{itemize}
+\end{itemize}
+\item Building features influencing delivery
+\begin{itemize}
+\item Multi-layered building
+\begin{itemize}
+\item Elevator available yes/no
+\end{itemize}
+\item distance street to front door (rural areas)
+\end{itemize}
+\end{itemize}
+
+\paragraph{Delivery time costs}
+$c_{i} = t_{i}*C\ \forall i \in N$
+with $C$ being some parameter cost per hour (or minute)
+
 \end{document}
